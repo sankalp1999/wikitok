@@ -166,9 +166,9 @@
     }
     .article-preview img {
       width: 100%;
-      height: 180px;
+      height: 240px; /* Increased from 180px */
       object-fit: cover;
-      flex-shrink: 0; /* Prevent image from shrinking */
+      flex-shrink: 0;
     }
     .article-preview .content {
       padding: 15px;
@@ -279,14 +279,14 @@
         min-width: 80px;
       }
       .article-preview {
-        height: 350px; /* Slightly shorter cards on mobile */
+        height: 450px; /* Increased from 350px */
       }
       .article-preview p {
         -webkit-line-clamp: 3; /* Show 3 lines on mobile */
       }
       
       .article-preview img {
-        height: 140px;  /* Slightly smaller images on mobile */
+        height: 200px;  /* Increased from 140px */
       }
       
       .article-preview .content {
@@ -328,12 +328,21 @@
       box-shadow: var(--shadow-light);
       margin-bottom: 5px;
     }
+
+    /* Add this for the title styling */
+    header h1 span.highlight {
+      color: var(--button-bg);
+      transition: color 0.3s ease;
+    }
+    body.dark-mode header h1 span.highlight {
+      color: var(--link-color);
+    }
   </style>
 </head>
 <body>
   <header>
     <div class="header-top">
-      <h1 style="cursor: pointer;">Wikipedia Explorer</h1>
+      <h1 style="cursor: pointer;">Wikipedia <span class="highlight">Explorer</span></h1>
       <div style="display: flex; gap: 10px;">
         <button id="dark-mode-toggle">Dark Mode</button>
         <button id="reset-api-button">Reset API Key</button>
