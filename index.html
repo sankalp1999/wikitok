@@ -244,6 +244,27 @@
         width: 100%;
         max-width: 300px;
       }
+      .article-preview p {
+        display: -webkit-box;
+        -webkit-line-clamp: 3;  /* Show only 3 lines of text */
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-height: 4.5em;  /* Approximately 3 lines of text (1.5em line-height * 3) */
+      }
+      
+      .article-preview img {
+        height: 140px;  /* Slightly smaller images on mobile */
+      }
+      
+      .article-preview .content {
+        padding: 12px;  /* Slightly less padding */
+      }
+      
+      .article-preview h2 {
+        font-size: 1.2em;  /* Slightly smaller title */
+        margin-bottom: 8px;
+      }
     }
   </style>
 </head>
