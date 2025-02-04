@@ -376,6 +376,9 @@
 
   <script>
     document.addEventListener("DOMContentLoaded", () => {
+      // Add this near the top with other constants
+      let pageLoadTime = Date.now();
+
       // Dark Mode Toggle
       const darkModeToggle = document.getElementById("dark-mode-toggle");
       // Check localStorage for dark mode preference, default to enabled
@@ -527,6 +530,11 @@
             const pages = Object.values(data.query.pages)
               .sort((a, b) => (topic ? a.index - b.index : 0));
             pages.forEach(page => displayArticle(page));
+          }
+
+          // Add this after successfully fetching articles
+          if (!topic) { // Only check on main page/random articles
+            await showRecommendations();
           }
         } catch (error) {
           console.error("Error fetching articles:", error);
@@ -725,7 +733,6 @@
         const existingIndex = readingHistory.findIndex(item => item.topic === topic);
         
         if (existingIndex !== -1) {
-          // Update timestamp if topic exists
           readingHistory.splice(existingIndex, 1);
         }
         
@@ -734,6 +741,9 @@
           readingHistory.pop();
         }
         localStorage.setItem('readingHistory', JSON.stringify(readingHistory));
+
+        // Add this line to check for recommendations after history update
+        showRecommendations();
       }
 
       // Calculate topic diversity score
@@ -754,19 +764,23 @@
         
         const diversity = calculateTopicDiversity();
         const topicCount = readingHistory.length;
+        const timeSinceLastRecommendation = readingHistory[0].timestamp - 
+          (parseInt(localStorage.getItem('lastRecommendationTime') || '0'));
         
         // Show recommendations if:
         // 1. We have enough new topics since last recommendation
-        // 2. OR we have high topic diversity (lots of different topics)
+        // 2. OR we have high topic diversity
+        // 3. OR it's been at least 5 minutes since last recommendation
         return (topicCount >= lastRecommendedAfterCount + MIN_TOPIC_CHANGES) || 
-               (diversity > 0.8 && topicCount > lastRecommendedAfterCount);
+               (diversity > 0.8 && topicCount > lastRecommendedAfterCount) ||
+               (timeSinceLastRecommendation > 5 * 60 * 1000); // 5 minutes
       }
 
       async function getPersonalizedTopics() {
         if (!shouldShowRecommendations()) return null;
         
         const apiKey = localStorage.getItem("openRouterApiKey");
-        if (!apiKey) return null;
+        if (!apiKey) return null;  // Early return if no API key
 
         // Emphasize recent topics by repeating them
         const weightedTopics = readingHistory.slice(0, 5).flatMap((item, index) => 
@@ -798,7 +812,6 @@
 
           const data = await response.json();
           if (data.choices && data.choices[0].message.content) {
-            // Update last recommended count
             lastRecommendedAfterCount = readingHistory.length;
             localStorage.setItem('lastRecommendedCount', lastRecommendedAfterCount.toString());
             return data.choices[0].message.content.split(',').map(t => t.trim());
@@ -809,13 +822,21 @@
         return null;
       }
 
+      // Update showRecommendations to check for time spent on page
       async function showRecommendations() {
+        // Check if user has been on the page for at least 5 seconds
+        if (Date.now() - pageLoadTime < 5000) {
+          return;
+        }
+
         const topics = await getPersonalizedTopics();
         if (!topics) {
           recommendationsSection.innerHTML = ''; // Clear if no new recommendations
           return;
         }
 
+        localStorage.setItem('lastRecommendationTime', Date.now().toString());
+        
         recommendationsSection.innerHTML = `
           <h3 style="color: var(--text-color);">
             Recommended Topics
