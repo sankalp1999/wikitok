@@ -619,6 +619,12 @@
         loadingIndicator.style.display = "block";
         document.getElementById("loading-text").textContent = "Curating articles for you...";
 
+        // Get recent topics for context
+        const recentTopics = readingHistory.slice(0, 5).map(item => item.topic);
+        const historyContext = recentTopics.length 
+          ? `Based on your recent interests in: ${recentTopics.join(', ')}, `
+          : '';
+
         try {
           const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
@@ -631,7 +637,7 @@
               "messages": [
                 {
                   "role": "user",
-                  "content": "Give me 5 fascinating topics from different domains (science, history, technology, arts, etc). Respond with only the topics separated by commas, no additional text."
+                  "content": `${historyContext}give me 5 fascinating topics from different domains (science, history, technology, arts, etc). Consider knowledge progression and topic relationships. You can go pretty deep/niche/bizarre/rabbithole way. Respond with only the topics separated by commas, no additional text.`
                 }
               ]
             })
