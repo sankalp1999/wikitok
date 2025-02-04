@@ -52,7 +52,7 @@
       background: var(--header-bg);
       padding: 25px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      transition: background 0.3s;
+      transition: background 0.3s, transform 0.3s ease;
     }
     header .header-top {
       display: flex;
@@ -229,6 +229,9 @@
 
     /* Mobile Responsive Adjustments */
     @media (max-width: 600px) {
+      header.hide {
+        transform: translateY(-100%);
+      }
       header .header-top {
         flex-direction: column;
         gap: 10px;
@@ -460,6 +463,24 @@
       
       // Initial fetch of articles
       fetchArticles();
+
+      // Add scroll behavior for header
+      let lastScrollY = window.scrollY;
+      const header = document.querySelector('header');
+      
+      window.addEventListener('scroll', () => {
+        if (window.innerWidth <= 600) {  // Only for mobile devices
+          const currentScrollY = window.scrollY;
+          if (currentScrollY > lastScrollY) {
+            // Scrolling down
+            header.classList.add('hide');
+          } else {
+            // Scrolling up
+            header.classList.remove('hide');
+          }
+          lastScrollY = currentScrollY;
+        }
+      });
     });
   </script>
 </body>
