@@ -566,6 +566,7 @@
         
         // Clicking anywhere on the article preview reloads the page with a new topic
         articleDiv.addEventListener("click", () => {
+          addToHistory(page.title);
           window.location.href = `?topic=${encodeURIComponent(page.title)}`;
         });
         
@@ -687,6 +688,155 @@
 
       // Add star button click handler
       starButton.addEventListener("click", loadCuratedArticles);
+
+      // Add these near the top of the DOMContentLoaded handler
+      const MAX_HISTORY_ITEMS = 10;
+      const RECENT_TOPICS_WEIGHT = 3;
+      const MIN_TOPIC_CHANGES = 3; // Minimum topic switches before showing recommendations
+      
+      // Load reading history from localStorage
+      let readingHistory = JSON.parse(localStorage.getItem('readingHistory') || '[]');
+      let lastRecommendedAfterCount = parseInt(localStorage.getItem('lastRecommendedCount') || '0');
+
+      function addToHistory(topic) {
+        const timestamp = Date.now();
+        const existingIndex = readingHistory.findIndex(item => item.topic === topic);
+        
+        if (existingIndex !== -1) {
+          // Update timestamp if topic exists
+          readingHistory.splice(existingIndex, 1);
+        }
+        
+        readingHistory.unshift({ topic, timestamp });
+        if (readingHistory.length > MAX_HISTORY_ITEMS) {
+          readingHistory.pop();
+        }
+        localStorage.setItem('readingHistory', JSON.stringify(readingHistory));
+      }
+
+      // Calculate topic diversity score
+      function calculateTopicDiversity() {
+        if (readingHistory.length < 2) return 0;
+        
+        // Get last 5 topics or all if less
+        const recentTopics = readingHistory.slice(0, 5);
+        
+        // Simple diversity score based on unique topics
+        const uniqueTopics = new Set(recentTopics.map(item => item.topic));
+        return uniqueTopics.size / recentTopics.length; // 1.0 means all topics different
+      }
+
+      // Check if we should show new recommendations
+      function shouldShowRecommendations() {
+        if (readingHistory.length < MIN_TOPIC_CHANGES) return false;
+        
+        const diversity = calculateTopicDiversity();
+        const topicCount = readingHistory.length;
+        
+        // Show recommendations if:
+        // 1. We have enough new topics since last recommendation
+        // 2. OR we have high topic diversity (lots of different topics)
+        return (topicCount >= lastRecommendedAfterCount + MIN_TOPIC_CHANGES) || 
+               (diversity > 0.8 && topicCount > lastRecommendedAfterCount);
+      }
+
+      async function getPersonalizedTopics() {
+        if (!shouldShowRecommendations()) return null;
+        
+        const apiKey = localStorage.getItem("openRouterApiKey");
+        if (!apiKey) return null;
+
+        // Emphasize recent topics by repeating them
+        const weightedTopics = readingHistory.slice(0, 5).flatMap((item, index) => 
+          Array(Math.max(RECENT_TOPICS_WEIGHT - index, 1)).fill(item.topic)
+        );
+
+        try {
+          const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${apiKey}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              "model": "anthropic/claude-3-haiku",
+              "messages": [
+                {
+                  "role": "user",
+                  "content": `Based on these topics (with more recent topics having higher priority): ${weightedTopics.join(', ')}, 
+                             suggest 5 new interesting topics to explore. 
+                             Consider knowledge progression and topic relationships.
+                             Prioritize topics related to the most recent searches.
+                             You can go pretty deep/niche/bizarre/rabbithole way.
+                             Respond with only the topics separated by commas, no additional text.`
+                }
+              ]
+            })
+          });
+
+          const data = await response.json();
+          if (data.choices && data.choices[0].message.content) {
+            // Update last recommended count
+            lastRecommendedAfterCount = readingHistory.length;
+            localStorage.setItem('lastRecommendedCount', lastRecommendedAfterCount.toString());
+            return data.choices[0].message.content.split(',').map(t => t.trim());
+          }
+        } catch (error) {
+          console.error("Error getting personalized topics:", error);
+        }
+        return null;
+      }
+
+      async function showRecommendations() {
+        const topics = await getPersonalizedTopics();
+        if (!topics) {
+          recommendationsSection.innerHTML = ''; // Clear if no new recommendations
+          return;
+        }
+
+        recommendationsSection.innerHTML = `
+          <h3 style="color: var(--text-color);">
+            Recommended Topics
+            <span style="
+              font-size: 0.8em;
+              opacity: 0.7;
+              font-weight: normal;
+              margin-left: 10px;
+            ">Based on your exploration pattern</span>
+          </h3>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            ${topics.map(topic => `
+              <button 
+                onclick="window.location.href='?topic=${encodeURIComponent(topic)}'"
+                style="
+                  background: var(--button-bg);
+                  color: white;
+                  border: none;
+                  padding: 8px 16px;
+                  border-radius: 20px;
+                  cursor: pointer;
+                  transition: filter 0.2s;
+                "
+                onmouseover="this.style.filter='brightness(0.9)'"
+                onmouseout="this.style.filter='brightness(1)'"
+              >${topic}</button>
+            `).join('')}
+          </div>
+        `;
+      }
+
+      // Add a recommendations section to the UI
+      const recommendationsSection = document.createElement('div');
+      recommendationsSection.className = 'recommendations';
+      recommendationsSection.style.cssText = `
+        max-width: 1200px;
+        margin: 20px auto;
+        padding: 0 15px;
+      `;
+      articlesContainer.parentNode.insertBefore(recommendationsSection, articlesContainer);
+
+      // Show recommendations on page load if we have history
+      showRecommendations();
     });
   </script>
 </body>
