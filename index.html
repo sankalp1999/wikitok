@@ -66,7 +66,7 @@
       font-weight: 600;
       color: var(--header-text);
     }
-    #dark-mode-toggle {
+    #dark-mode-toggle, #reset-api-button {
       padding: 8px 16px;
       font-size: 14px;
       background-color: var(--button-bg);
@@ -78,7 +78,9 @@
       margin-top: 10px;
     }
     #dark-mode-toggle:hover,
-    #dark-mode-toggle:focus {
+    #dark-mode-toggle:focus,
+    #reset-api-button:hover,
+    #reset-api-button:focus {
       filter: brightness(0.9);
       outline: none;
     }
@@ -295,6 +297,10 @@
         font-size: 1.2em;  /* Slightly smaller title */
         margin-bottom: 8px;
       }
+      #dark-mode-toggle, #reset-api-button {
+        padding: 8px 12px;
+        font-size: 13px;
+      }
     }
 
     /* Add these styles */
@@ -328,7 +334,10 @@
   <header>
     <div class="header-top">
       <h1 style="cursor: pointer;">Wikipedia Explorer</h1>
-      <button id="dark-mode-toggle">Dark Mode</button>
+      <div style="display: flex; gap: 10px;">
+        <button id="dark-mode-toggle">Dark Mode</button>
+        <button id="reset-api-button">Reset API Key</button>
+      </div>
     </div>
     <div class="search-container">
       <div class="search-row">
@@ -338,7 +347,7 @@
           placeholder="Enter a topic..." 
           value=""
         >
-        <button id="search-button">Explore</button>
+        <button id="search-button">Search</button>
       </div>
       <div class="search-row">
         <input 
@@ -615,6 +624,8 @@
           return;
         }
 
+        // Show loading immediately when curate button is clicked
+        clearArticles();
         loading = true;
         loadingIndicator.style.display = "block";
         document.getElementById("loading-text").textContent = "Curating articles for you...";
@@ -848,6 +859,18 @@
 
       // Show recommendations on page load if we have history
       showRecommendations();
+
+      // Add reset API button functionality
+      const resetApiButton = document.getElementById("reset-api-button");
+      resetApiButton.addEventListener("click", () => {
+        if (confirm("Are you sure you want to reset your API key?")) {
+          localStorage.removeItem("openRouterApiKey");
+          apiKeyInput.value = "";
+          apiKeyInput.placeholder = "Press Enter to save OpenRouter API Key";
+          starButton.classList.remove('ready');
+          starButton.setAttribute('data-tooltip', 'Add OpenRouter API key to enable');
+        }
+      });
     });
   </script>
 </body>
