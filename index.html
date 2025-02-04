@@ -369,8 +369,8 @@
     document.addEventListener("DOMContentLoaded", () => {
       // Dark Mode Toggle
       const darkModeToggle = document.getElementById("dark-mode-toggle");
-      // Check localStorage for dark mode preference
-      if (localStorage.getItem("darkMode") === "enabled") {
+      // Check localStorage for dark mode preference, default to enabled
+      if (localStorage.getItem("darkMode") !== "disabled") {
         document.body.classList.add("dark-mode");
         darkModeToggle.textContent = "Light Mode";
       }
