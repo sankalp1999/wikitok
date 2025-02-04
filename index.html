@@ -296,6 +296,32 @@
         margin-bottom: 8px;
       }
     }
+
+    /* Add these styles */
+    #star-button {
+      opacity: 0.5; /* Dimmed by default */
+      position: relative;
+    }
+
+    #star-button.ready {
+      opacity: 1;
+    }
+
+    #star-button:hover::before {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 5px 10px;
+      background: var(--card-bg);
+      color: var(--text-color);
+      border-radius: 4px;
+      font-size: 12px;
+      white-space: nowrap;
+      box-shadow: var(--shadow-light);
+      margin-bottom: 5px;
+    }
   </style>
 </head>
 <body>
@@ -316,11 +342,11 @@
       </div>
       <div class="search-row">
         <input 
-          type="text" 
+          type="password" 
           id="api-key-input"
-          placeholder="OpenRouter API Key (for curated topics)"
+          placeholder="Press Enter to save OpenRouter API Key"
         >
-        <button id="star-button">
+        <button id="star-button" data-tooltip="Add OpenRouter API key to enable">
           <span class="star-icon">★</span>
           Curate
         </button>
@@ -384,12 +410,30 @@
       // Set initial topic in input field
       topicInput.value = topic;
 
-      // Load saved API key from localStorage
-      apiKeyInput.value = localStorage.getItem("openRouterApiKey") || "";
+      // Load saved API key from localStorage and update UI accordingly
+      const savedApiKey = localStorage.getItem("openRouterApiKey") || "";
+      if (savedApiKey) {
+        apiKeyInput.value = savedApiKey;
+        apiKeyInput.placeholder = "API Key saved";
+        starButton.classList.add('ready');
+        starButton.setAttribute('data-tooltip', 'Click to get curated articles');
+      } else {
+        apiKeyInput.placeholder = "Press Enter to save OpenRouter API Key";
+        starButton.setAttribute('data-tooltip', 'Add OpenRouter API key to enable');
+      }
 
-      // Save API key to localStorage when changed
-      apiKeyInput.addEventListener("change", () => {
-        localStorage.setItem("openRouterApiKey", apiKeyInput.value);
+      // Handle API key input
+      apiKeyInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") {
+          const apiKey = apiKeyInput.value.trim();
+          if (apiKey) {
+            localStorage.setItem("openRouterApiKey", apiKey);
+            apiKeyInput.placeholder = "API Key saved";
+            starButton.classList.add('ready');
+            starButton.setAttribute('data-tooltip', 'Click to get curated articles');
+            alert("API key saved successfully!");
+          }
+        }
       });
 
       // Clear articles container when loading new content
@@ -560,9 +604,10 @@
       });
 
       async function loadCuratedArticles() {
-        const apiKey = apiKeyInput.value.trim();
+        const apiKey = localStorage.getItem("openRouterApiKey");
         if (!apiKey) {
-          alert("Please enter your OpenRouter API key for curated topics");
+          alert("Please enter your OpenRouter API key and press Enter to save it");
+          apiKeyInput.focus();
           return;
         }
 
