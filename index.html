@@ -382,13 +382,14 @@
           const response = await fetch(url);
           const data = await response.json();
           
-          // Update nextOffset only for search results
-          if (topic && data.continue && data.continue.gsroffset) {
-            nextOffset = data.continue.gsroffset;
+          // Update nextOffset for search results, keep it non-null for random articles
+          if (topic) {
+            nextOffset = data.continue?.gsroffset || null;
+            if (!nextOffset) {
+              observer.disconnect(); // Only disconnect if we're out of search results
+            }
           } else {
-            nextOffset = null;
-            // If no more results, disconnect the observer
-            observer.disconnect();
+            nextOffset = 1; // Always keep nextOffset valid for random articles
           }
 
           if (data.query && data.query.pages) {
