@@ -560,7 +560,7 @@
         const linkElem = document.createElement("a");
         linkElem.href = `https://en.wikipedia.org/?curid=${page.pageid}`;
         linkElem.target = "_blank";
-        linkElem.textContent = "Read more on Wikipedia";
+        linkElem.textContent = "Read more →";
         // Prevent the click from bubbling up to the parent container
         linkElem.addEventListener("click", (e) => e.stopPropagation());
         contentDiv.appendChild(linkElem);
