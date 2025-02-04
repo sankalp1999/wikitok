@@ -94,22 +94,25 @@
     .search-row {
       display: flex;
       gap: 10px;
+      width: 100%;
+      max-width: 425px;
     }
-    #topic-input {
+    #topic-input, #api-key-input {
       padding: 10px 15px;
       font-size: 16px;
       border: none;
       border-radius: 6px;
-      width: 300px;
+      flex: 1;
+      min-width: 0; /* Allows flex shrinking */
       background-color: var(--input-bg);
       color: var(--text-color);
       transition: background-color 0.3s, color 0.3s;
     }
-    #topic-input:focus {
+    #topic-input:focus, #api-key-input:focus {
       outline: none;
       box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.5);
     }
-    #search-button {
+    #search-button, #star-button {
       padding: 10px 20px;
       font-size: 16px;
       background-color: var(--button-bg);
@@ -118,32 +121,11 @@
       border-radius: 6px;
       cursor: pointer;
       transition: background-color 0.2s ease;
+      white-space: nowrap;
+      min-width: 90px;
     }
     #search-button:hover,
-    #search-button:focus {
-      filter: brightness(0.9);
-      outline: none;
-    }
-    #api-key-input {
-      padding: 10px 15px;
-      font-size: 16px;
-      border: none;
-      border-radius: 6px;
-      width: 300px;
-      background-color: var(--input-bg);
-      color: var(--text-color);
-      transition: background-color 0.3s, color 0.3s;
-    }
-    #star-button {
-      padding: 10px 20px;
-      font-size: 16px;
-      background-color: var(--button-bg);
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: background-color 0.2s ease;
-    }
+    #search-button:focus,
     #star-button:hover,
     #star-button:focus {
       filter: brightness(0.9);
@@ -268,10 +250,18 @@
       .search-container {
         flex-direction: column;
         align-items: center;
+        padding: 0 15px;
       }
-      #topic-input, #search-button {
+      .search-row {
         width: 100%;
-        max-width: 300px;
+      }
+      #topic-input, #api-key-input, #search-button, #star-button {
+        width: auto;
+        font-size: 14px;
+      }
+      #search-button, #star-button {
+        padding: 10px 15px;
+        min-width: 80px;
       }
       .article-preview p {
         display: -webkit-box;
