@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Infinite Wikipedia Explorer</title>
+  <style>
+    /* CSS Variables for Light Mode */
+    :root {
+      --bg-color: #f8f9fa;
+      --text-color: #2c3e50;
+      --header-bg: linear-gradient(45deg, #2c3e50, #34495e);
+      --header-text: #ffffff;
+      --input-bg: rgba(255, 255, 255, 0.9);
+      --card-bg: #ffffff;
+      --button-bg: #3498db;
+      --link-color: #3498db;
+      --link-bg: #f8f9fa;
+      --shadow-light: 0 2px 8px rgba(0, 0, 0, 0.08);
+      --shadow-hover: 0 6px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Dark Mode Variables */
+    body.dark-mode {
+      --bg-color: #121212;
+      --text-color: #e0e0e0;
+      --header-bg: linear-gradient(45deg, #1a1a1a, #333333);
+      --header-text: #e0e0e0;
+      --input-bg: #333;
+      --card-bg: #1e1e1e;
+      --button-bg: #bb86fc;
+      --link-color: #bb86fc;
+      --link-bg: #1a1a1a;
+      --shadow-light: 0 2px 8px rgba(0, 0, 0, 0.5);
+      --shadow-hover: 0 6px 12px rgba(0, 0, 0, 0.7);
+    }
+
+    /* Global Styles */
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    /* Header Styles */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--header-bg);
+      padding: 25px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      transition: background 0.3s;
+    }
+    header .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 2em;
+      font-weight: 600;
+      color: var(--header-text);
+    }
+    #dark-mode-toggle {
+      padding: 8px 16px;
+      font-size: 14px;
+      background-color: var(--button-bg);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+      margin-top: 10px;
+    }
+    #dark-mode-toggle:hover,
+    #dark-mode-toggle:focus {
+      filter: brightness(0.9);
+      outline: none;
+    }
+
+    /* Search Container */
+    .search-container {
+      margin-top: 20px;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    #topic-input {
+      padding: 10px 15px;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+      width: 300px;
+      background-color: var(--input-bg);
+      color: var(--text-color);
+      transition: background-color 0.3s, color 0.3s;
+    }
+    #topic-input:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.5);
+    }
+    #search-button {
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: var(--button-bg);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    #search-button:hover,
+    #search-button:focus {
+      filter: brightness(0.9);
+      outline: none;
+    }
+
+    /* Articles Container - Multi-Column Layout */
+    #articles {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      max-width: 1200px;
+      margin: 30px auto;
+      padding: 0 15px;
+      background-color: transparent;
+    }
+
+    /* Article Preview Styles with Fade-In Animation */
+    .article-preview {
+      display: flex;
+      flex-direction: column;
+      border-radius: 12px;
+      background-color: var(--card-bg);
+      box-shadow: var(--shadow-light);
+      cursor: pointer;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeInUp 0.5s forwards;
+    }
+    .article-preview:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-hover);
+    }
+    .article-preview img {
+      width: 100%;
+      height: 180px;
+      object-fit: cover;
+    }
+    .article-preview .content {
+      padding: 15px;
+      flex: 1;
+    }
+    .article-preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.4em;
+      color: var(--text-color);
+      font-weight: 600;
+    }
+    .article-preview p {
+      margin: 0 0 15px;
+      color: var(--text-color);
+      line-height: 1.5;
+    }
+    .article-preview a {
+      display: inline-block;
+      color: var(--link-color);
+      text-decoration: none;
+      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: 6px;
+      background-color: var(--link-bg);
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+    .article-preview a:hover,
+    .article-preview a:focus {
+      background-color: var(--link-color);
+      color: #fff;
+      text-decoration: none;
+      outline: none;
+    }
+
+    /* Loading Indicator with Spinner */
+    #loading {
+      text-align: center;
+      padding: 20px;
+      font-size: 1.2em;
+      color: var(--link-color);
+    }
+    .spinner {
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border-left-color: var(--link-color);
+      animation: spin 1s linear infinite;
+      margin: auto;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Fade In Up Animation */
+    @keyframes fadeInUp {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Sentinel for IntersectionObserver */
+    #sentinel {
+      height: 20px;
+    }
+
+    /* Improved Focus States for Accessibility */
+    input:focus, button:focus, a:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.5);
+    }
+
+    /* Mobile Responsive Adjustments */
+    @media (max-width: 600px) {
+      header .header-top {
+        flex-direction: column;
+        gap: 10px;
+      }
+      .search-container {
+        flex-direction: column;
+        align-items: center;
+      }
+      #topic-input, #search-button {
+        width: 100%;
+        max-width: 300px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-top">
+      <h1 style="cursor: pointer;">Wikipedia Explorer</h1>
+      <button id="dark-mode-toggle">Dark Mode</button>
+    </div>
+    <div class="search-container">
+      <input 
+        type="text" 
+        id="topic-input" 
+        placeholder="Enter a topic..." 
+        value="">
+      <button id="search-button">Explore</button>
+    </div>
+  </header>
+  
+  <div id="articles"></div>
+  
+  <!-- Loading indicator with spinner -->
+  <div id="loading" style="display: none;">
+    <div class="spinner"></div>
+  </div>
+  
+  <!-- Sentinel for infinite scrolling -->
+  <div id="sentinel"></div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      // Dark Mode Toggle
+      const darkModeToggle = document.getElementById("dark-mode-toggle");
+      // Check localStorage for dark mode preference
+      if (localStorage.getItem("darkMode") === "enabled") {
+        document.body.classList.add("dark-mode");
+        darkModeToggle.textContent = "Light Mode";
+      }
+      darkModeToggle.addEventListener("click", function() {
+        document.body.classList.toggle("dark-mode");
+        if(document.body.classList.contains("dark-mode")) {
+          darkModeToggle.textContent = "Light Mode";
+          localStorage.setItem("darkMode", "enabled");
+        } else {
+          darkModeToggle.textContent = "Dark Mode";
+          localStorage.setItem("darkMode", "disabled");
+        }
+      });
+
+      // Add click handler for the title
+      document.querySelector('header h1').addEventListener('click', () => {
+        window.location.href = window.location.pathname; // Removes query parameters
+      });
+
+      const articlesContainer = document.getElementById("articles");
+      const loadingIndicator = document.getElementById("loading");
+      const sentinel = document.getElementById("sentinel");
+      
+      // Determine current topic from URL (default to random articles)
+      const params = new URLSearchParams(window.location.search);
+      let topic = params.get("topic") || "";
+      
+      // Variables for pagination and loading state
+      let nextOffset = null;
+      let loading = false;
+      
+      const topicInput = document.getElementById("topic-input");
+      const searchButton = document.getElementById("search-button");
+
+      // Set initial topic in input field
+      topicInput.value = topic;
+
+      // Clear articles container when loading new content
+      function clearArticles() {
+        articlesContainer.innerHTML = '';
+        nextOffset = null;
+      }
+
+      // Handle search button click
+      searchButton.addEventListener("click", () => {
+        const newTopic = topicInput.value.trim();
+        clearArticles();
+        window.location.href = newTopic 
+          ? `?topic=${encodeURIComponent(newTopic)}`
+          : window.location.pathname;
+      });
+
+      // Handle Enter key in input field
+      topicInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") {
+          const newTopic = topicInput.value.trim();
+          clearArticles();
+          window.location.href = newTopic 
+            ? `?topic=${encodeURIComponent(newTopic)}`
+            : window.location.pathname;
+        }
+      });
+      
+      /**
+       * Fetch articles from Wikipedia using MediaWiki's API with generator=search.
+       * Uses page extracts and pageimages to get a brief summary and thumbnail.
+       */
+      async function fetchArticles() {
+        if (loading) return;
+        loading = true;
+        loadingIndicator.style.display = "block";
+        
+        const apiUrl = "https://en.wikipedia.org/w/api.php";
+        const urlParams = new URLSearchParams({
+          action: "query",
+          format: "json",
+          origin: "*",
+          prop: "pageimages|extracts",
+          exintro: "1",
+          explaintext: "1",
+          pithumbsize: "200"
+        });
+
+        // Use different generator based on whether we're searching or getting random articles
+        if (topic) {
+          urlParams.append("generator", "search");
+          urlParams.append("gsrsearch", topic);
+          urlParams.append("gsrlimit", "10");
+          if (nextOffset) {
+            urlParams.append("gsroffset", nextOffset);
+          }
+        } else {
+          urlParams.append("generator", "random");
+          urlParams.append("grnnamespace", "0"); // Main namespace only
+          urlParams.append("grnlimit", "10");
+        }
+
+        const url = `${apiUrl}?${urlParams.toString()}`;
+
+        try {
+          const response = await fetch(url);
+          const data = await response.json();
+          
+          // Update nextOffset only for search results
+          if (topic && data.continue && data.continue.gsroffset) {
+            nextOffset = data.continue.gsroffset;
+          } else {
+            nextOffset = null;
+            // If no more results, disconnect the observer
+            observer.disconnect();
+          }
+
+          if (data.query && data.query.pages) {
+            const pages = Object.values(data.query.pages)
+              .sort((a, b) => (topic ? a.index - b.index : 0));
+            pages.forEach(page => displayArticle(page));
+          }
+        } catch (error) {
+          console.error("Error fetching articles:", error);
+        } finally {
+          loading = false;
+          loadingIndicator.style.display = "none";
+        }
+      }
+      
+      /**
+       * Create and display an article preview.
+       * - Clicking on the preview reloads the page with the article title as the new topic.
+       * - The "Read more" link opens the full Wikipedia article in a new tab.
+       */
+      function displayArticle(page) {
+        const articleDiv = document.createElement("div");
+        articleDiv.className = "article-preview";
+        
+        // Add thumbnail image if available
+        if (page.thumbnail && page.thumbnail.source) {
+          const img = document.createElement("img");
+          img.src = page.thumbnail.source;
+          img.alt = page.title;
+          articleDiv.appendChild(img);
+        }
+        
+        const contentDiv = document.createElement("div");
+        contentDiv.className = "content";
+        
+        const titleElem = document.createElement("h2");
+        titleElem.textContent = page.title;
+        contentDiv.appendChild(titleElem);
+        
+        const summaryElem = document.createElement("p");
+        summaryElem.textContent = page.extract || "No summary available.";
+        contentDiv.appendChild(summaryElem);
+        
+        // "Read more" link to the actual Wikipedia page
+        const linkElem = document.createElement("a");
+        linkElem.href = `https://en.wikipedia.org/?curid=${page.pageid}`;
+        linkElem.target = "_blank";
+        linkElem.textContent = "Read more on Wikipedia";
+        // Prevent the click from bubbling up to the parent container
+        linkElem.addEventListener("click", (e) => e.stopPropagation());
+        contentDiv.appendChild(linkElem);
+        
+        articleDiv.appendChild(contentDiv);
+        
+        // Clicking anywhere on the article preview reloads the page with a new topic
+        articleDiv.addEventListener("click", () => {
+          window.location.href = `?topic=${encodeURIComponent(page.title)}`;
+        });
+        
+        articlesContainer.appendChild(articleDiv);
+      }
+      
+      // Set up the Intersection Observer for infinite scrolling
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting && !loading && nextOffset !== null) {
+            fetchArticles();
+          }
+        });
+      });
+      observer.observe(sentinel);
+      
+      // Initial fetch of articles
+      fetchArticles();
+    });
+  </script>
+</body>
+</html>
