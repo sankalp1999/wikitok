@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Graph Mode - Wikipedia Explorer</title>
+  <style>
+    /* CSS Variables for Light Mode */
+    :root {
+      --bg-color: #f8f9fa;
+      --text-color: #2c3e50;
+      --header-bg: linear-gradient(45deg, #2c3e50, #34495e);
+      --header-text: #ffffff;
+      --input-bg: rgba(255, 255, 255, 0.9);
+      --card-bg: #ffffff;
+      --button-bg: #3498db;
+      --link-color: #3498db;
+      --link-bg: #f8f9fa;
+      --shadow-light: 0 2px 8px rgba(0, 0, 0, 0.08);
+      --shadow-hover: 0 6px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Dark Mode Variables */
+    body.dark-mode {
+      --bg-color: #121212;
+      --text-color: #e0e0e0;
+      --header-bg: linear-gradient(45deg, #1a1a1a, #333333);
+      --header-text: #e0e0e0;
+      --input-bg: #333;
+      --card-bg: #1e1e1e;
+      --button-bg: #bb86fc;
+      --link-color: #bb86fc;
+      --link-bg: #1a1a1a;
+      --shadow-light: 0 2px 8px rgba(0, 0, 0, 0.5);
+      --shadow-hover: 0 6px 12px rgba(0, 0, 0, 0.7);
+    }
+
+    /* Global Styles */
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    /* Header Styles */
+    header {
+      background: var(--header-bg);
+      padding: 25px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 2em;
+      font-weight: 600;
+      color: var(--header-text);
+    }
+
+    button {
+      padding: 8px 16px;
+      font-size: 14px;
+      background-color: var(--button-bg);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    button:hover {
+      filter: brightness(0.9);
+    }
+
+    /* Graph Container */
+    #graph-container {
+      width: 100%;
+      height: 70vh;
+      margin: 10px auto;
+      border: 1px solid var(--text-color);
+      border-radius: 8px;
+      background-color: var(--card-bg);
+    }
+
+    /* Articles Grid and Flip Cards */
+    #articles-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 0 15px;
+    }
+
+    .flip-card {
+      background-color: transparent;
+      width: 300px;
+      height: 400px;
+      perspective: 1000px;
+      margin: 15px;
+    }
+
+    .flip-card-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transition: transform 0.6s;
+      transform-style: preserve-3d;
+    }
+
+    .flip-card:hover .flip-card-inner {
+      transform: rotateY(180deg);
+    }
+
+    .flip-card-front, .flip-card-back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      border-radius: 8px;
+      box-shadow: var(--shadow-light);
+      background-color: var(--card-bg);
+      color: var(--text-color);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .flip-card-back {
+      transform: rotateY(180deg);
+    }
+
+    .article-preview {
+      background-color: var(--card-bg);
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: var(--shadow-light);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      height: 500px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .article-preview:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-hover);
+    }
+
+    .article-preview img {
+      width: 100%;
+      height: 240px;
+      object-fit: cover;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+
+    .article-preview h3 {
+      margin: 0 0 12px;
+      font-size: 1.4em;
+      color: var(--text-color);
+    }
+
+    .article-preview p {
+      margin: 0 0 15px;
+      color: var(--text-color);
+      line-height: 1.5;
+      flex: 1;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 4;
+      -webkit-box-orient: vertical;
+    }
+
+    .article-preview a {
+      color: var(--link-color);
+      text-decoration: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      background-color: var(--link-bg);
+      align-self: flex-start;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    .article-preview a:hover {
+      background-color: var(--link-color);
+      color: #fff;
+    }
+
+    @media (max-width: 600px) {
+      .article-preview {
+        height: 450px;
+      }
+      
+      .article-preview img {
+        height: 200px;
+      }
+      
+      .article-preview h3 {
+        font-size: 1.2em;
+      }
+      
+      .article-preview p {
+        -webkit-line-clamp: 3;
+      }
+    }
+
+    /* Responsive header adjustments */
+    @media (max-width: 480px) {
+      header {
+        padding: 15px;
+      }
+
+      header h1 {
+        font-size: 1.5em;
+        margin-bottom: 10px;
+      }
+
+      .header-top {
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      #graph-container {
+        height: 60vh;
+        margin: 5px auto;
+      }
+
+      button {
+        padding: 6px 12px;
+        font-size: 12px;
+      }
+    }
+
+    /* Adjust article grid for smaller screens */
+    @media (max-width: 768px) {
+      #articles-grid {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 15px;
+        padding: 0 10px;
+      }
+    }
+  </style>
+  <!-- Include d3 library -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <!-- Include your graph.js file -->
+  <script src="graph.js" onerror="handleScriptError()"></script>
+  <script>
+    function handleScriptError() {
+      console.error("Failed to load graph.js");
+      document.getElementById('graph-container').innerHTML = '<p style="color: red; padding: 20px;">Error: Failed to load graph visualization. Please check if graph.js exists and try again.</p>';
+    }
+  </script>
+</head>
+<body>
+  <header>
+    <div class="header-top">
+      <h1>Graph Mode - Wikipedia Explorer</h1>
+      <div style="display: flex; gap: 10px;">
+        <button id="dark-mode-toggle">Dark Mode</button>
+        <button id="back-to-articles">Articles Mode</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Graph container -->
+  <div id="graph-container"></div>
+
+  <!-- Articles container -->
+  <div id="articles">
+    <h2 style="text-align: center; color: var(--text-color); margin: 40px 0 20px;">Articles</h2>
+    <div id="articles-grid"></div>
+  </div>
+
+  <script>
+    // Wait until the DOM and graph.js are loaded
+    document.addEventListener("DOMContentLoaded", () => {
+      console.log("DOM Content Loaded");
+
+      // Initialize dark mode state
+      const darkModeToggle = document.getElementById('dark-mode-toggle');
+      const isDarkMode = localStorage.getItem('darkMode') === 'true';
+      if (isDarkMode) {
+        document.body.classList.add('dark-mode');
+        darkModeToggle.textContent = 'Light Mode';
+      }
+
+      darkModeToggle.addEventListener('click', () => {
+        document.body.classList.toggle('dark-mode');
+        const isDark = document.body.classList.contains('dark-mode');
+        localStorage.setItem('darkMode', isDark);
+        darkModeToggle.textContent = isDark ? 'Light Mode' : 'Dark Mode';
+      });
+
+      // Initialize graph
+      console.log("Initializing graph...");
+      try {
+        if (typeof TopicGraph === 'undefined') {
+          console.error("TopicGraph class not found! Check if graph.js is loaded correctly.");
+          document.getElementById('graph-container').innerHTML = '<p style="color: red; padding: 20px;">Error: Graph visualization failed to load. Please try refreshing the page.</p>';
+          return;
+        }
+        
+        const graph = new TopicGraph('graph-container');
+        console.log("Graph initialized successfully");
+
+        // Set an initial topic (could be from URL params or default)
+        let currentTopic = new URLSearchParams(window.location.search).get('topic') || "Wikipedia";
+        console.log("Current topic:", currentTopic);
+
+        // Function to update the graph for a new center topic.
+        async function updateGraph(topic) {
+          console.log("Updating graph for topic:", topic);
+          currentTopic = topic;
+          // Reset the graph data so that a new center node is created
+          graph.nodes = undefined;
+          graph.links = undefined;
+          try {
+            // Fetch linked topics from Wikipedia
+            const linkedTopics = await graph.fetchArticleLinks(topic);
+            console.log("Fetched linked topics:", linkedTopics);
+            // Render the graph with the center node and its linked topics
+            graph.renderGraph(topic, linkedTopics);
+            console.log("Graph rendered successfully");
+          } catch (error) {
+            console.error("Error updating graph:", error);
+            document.getElementById('graph-container').innerHTML = '<p style="color: red; padding: 20px;">Error: Failed to update graph. Please try again.</p>';
+          }
+        }
+
+        // Initial graph render
+        updateGraph(currentTopic);
+
+        // Listen for custom graph node clicks
+        document.getElementById('graph-container').addEventListener('graphNodeClick', async (e) => {
+          console.log("Node clicked:", e.detail.title);
+          const clickedTopic = e.detail.title;
+          // Update the graph with the new center topic
+          await updateGraph(clickedTopic);
+          // Articles are now updated by the graph class itself
+        });
+
+        // Back to Articles Mode button
+        document.getElementById('back-to-articles').addEventListener('click', () => {
+          // Navigate back to the articles mode (adjust as needed)
+          window.location.href = 'index.html';
+        });
+
+        // (Optional) Check URL parameters for dark mode state
+        const params = new URLSearchParams(window.location.search);
+        const darkMode = params.get("darkMode");
+        if (darkMode === null || darkMode === "true") {
+          document.body.classList.add("dark-mode");
+        }
+        darkModeToggle.textContent = document.body.classList.contains("dark-mode") ? "Light Mode" : "Dark Mode";
+      } catch (error) {
+        console.error("Error initializing graph:", error);
+        document.getElementById('graph-container').innerHTML = '<p style="color: red; padding: 20px;">Error: Failed to initialize graph. Please try again.</p>';
+      }
+    });
+  </script>
+</body>
+</html>

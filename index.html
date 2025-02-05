@@ -376,26 +376,6 @@
       animation: fadeIn 0.3s ease;
     }
 
-    /* Update article preview text truncation */
-    .article-preview p {
-      position: relative;
-      max-height: 6em;
-      overflow: hidden;
-    }
-
-    .article-preview p::after {
-      content: "";
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 2em;
-      background: linear-gradient(to bottom, 
-        transparent 0%, 
-        var(--card-bg) 100%
-      );
-    }
-
     /* Enhanced transitions */
     body, .article-preview, header {
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -409,6 +389,10 @@
       <div style="display: flex; gap: 10px;">
         <button id="dark-mode-toggle">Dark Mode</button>
         <button id="reset-api-button">Reset API Key</button>
+        <button 
+          id="graph-mode-button" 
+          style="background: var(--button-bg); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; transition: background-color 0.2s ease;"
+        >Graph Mode</button>
       </div>
     </div>
     <div class="search-container">
@@ -610,6 +594,15 @@
           const response = await fetch(url);
           const data = await response.json();
           
+          // Handle empty results
+          if (!data.query || !data.query.pages || Object.keys(data.query.pages).length === 0) {
+            document.getElementById('empty-state').style.display = 'block';
+            observer.disconnect();
+            return;
+          } else {
+            document.getElementById('empty-state').style.display = 'none';
+          }
+
           // Update nextOffset for search results, keep it non-null for random articles
           if (topic) {
             nextOffset = data.continue?.gsroffset || null;
@@ -747,7 +740,7 @@
               "Content-Type": "application/json"
             },
             body: JSON.stringify({
-              "model": "anthropic/claude-3.5-sonnet",
+              "model": "google/gemini-2.0-flash-001",
               "messages": [
                 {
                   "role": "user",
@@ -890,7 +883,7 @@
               "Content-Type": "application/json"
             },
             body: JSON.stringify({
-              "model": "anthropic/claude-3.5-sonnet",
+              "model": "google/gemini-2.0-flash-001",
               "messages": [
                 {
                   "role": "user",
@@ -1004,30 +997,15 @@
         input.type = input.type === 'password' ? 'text' : 'password';
       });
 
-      // Update fetchArticles error handling
-      try {
-        // ... existing fetch code ...
-      } catch (error) {
-        console.error("Error fetching articles:", error);
-        showError("Failed to load articles. Please try again.");
-      } finally {
-        loading = false;
-        loadingIndicator.style.display = "none";
-      }
-
-      // Add empty state handling in fetchArticles
-      if (!data.query || !data.query.pages || Object.keys(data.query.pages).length === 0) {
-        document.getElementById('empty-state').style.display = 'block';
-        observer.disconnect();
-        return;
-      } else {
-        document.getElementById('empty-state').style.display = 'none';
-      }
-
-      // Add first-time help tooltip
-      if (!localStorage.getItem('seenHelp')) {
-        starButton.setAttribute('data-tooltip', 'Click here to get AI-curated articles based on your interests');
-        localStorage.setItem('seenHelp', 'true');
+      // Move this outside of any async functions
+      // Add this near the top of the DOMContentLoaded handler
+      const graphModeButton = document.getElementById("graph-mode-button");
+      if (graphModeButton) {
+        graphModeButton.addEventListener("click", () => {
+          const currentTopic = topicInput.value.trim() || "Wikipedia";
+          const isDarkMode = document.body.classList.contains("dark-mode");
+          window.location.href = `graph.html?topic=${encodeURIComponent(currentTopic)}&darkMode=${isDarkMode}`;
+        });
       }
     });
   </script>
