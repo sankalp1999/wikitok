@@ -337,6 +337,69 @@
     body.dark-mode header h1 span.highlight {
       color: var(--link-color);
     }
+
+    /* Add after existing keyframes */
+    @keyframes shimmer {
+      100% { transform: translateX(100%); }
+    }
+
+    .skeleton {
+      position: relative;
+      overflow: hidden;
+      background: var(--card-bg);
+    }
+
+    .skeleton::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      transform: translateX(-100%);
+      background: linear-gradient(90deg,
+        transparent 25%,
+        rgba(255,255,255,0.1) 50%,
+        transparent 75%
+      );
+      animation: shimmer 1.5s infinite;
+    }
+
+    .error-toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #e74c3c;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      z-index: 1000;
+      animation: fadeIn 0.3s ease;
+    }
+
+    /* Update article preview text truncation */
+    .article-preview p {
+      position: relative;
+      max-height: 6em;
+      overflow: hidden;
+    }
+
+    .article-preview p::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 2em;
+      background: linear-gradient(to bottom, 
+        transparent 0%, 
+        var(--card-bg) 100%
+      );
+    }
+
+    /* Enhanced transitions */
+    body, .article-preview, header {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
   </style>
 </head>
 <body>
@@ -359,12 +422,24 @@
         <button id="search-button">Explore</button>
       </div>
       <div class="search-row">
-        <input 
-          type="password" 
-          id="api-key-input"
-          placeholder="Press Enter to save OpenRouter API Key"
+        <div class="api-key-group" style="flex: 1; display: flex; gap: 5px;">
+          <input 
+            type="password" 
+            id="api-key-input"
+            aria-label="OpenRouter API Key"
+            placeholder="Press Enter to save OpenRouter API Key"
+          >
+          <button 
+            id="toggle-key-visibility" 
+            aria-label="Toggle API key visibility"
+            style="padding: 8px; background: var(--button-bg); border: none; border-radius: 6px; cursor: pointer;"
+          >👁</button>
+        </div>
+        <button 
+          id="star-button" 
+          data-tooltip="Add OpenRouter API key to enable"
+          aria-label="Curate articles"
         >
-        <button id="star-button" data-tooltip="Add OpenRouter API key to enable">
           <span class="star-icon">★</span>
           Curate
         </button>
@@ -382,6 +457,16 @@
   
   <!-- Sentinel for infinite scrolling -->
   <div id="sentinel"></div>
+
+  <!-- Add after articles container -->
+  <div id="empty-state" style="display: none; text-align: center; padding: 40px;">
+    <h3 style="color: var(--text-color);">No articles found</h3>
+    <p style="color: var(--text-color); margin-bottom: 20px;">Try adjusting your search terms or explore random articles</p>
+    <button 
+      onclick="window.location.href=window.location.pathname"
+      style="background: var(--button-bg); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;"
+    >Show Random Articles</button>
+  </div>
 
   <script>
     document.addEventListener("DOMContentLoaded", () => {
@@ -547,6 +632,7 @@
           }
         } catch (error) {
           console.error("Error fetching articles:", error);
+          showError("Failed to load articles. Please try again.");
         } finally {
           loading = false;
           loadingIndicator.style.display = "none";
@@ -901,6 +987,48 @@
           starButton.setAttribute('data-tooltip', 'Add OpenRouter API key to enable');
         }
       });
+
+      // Add inside DOMContentLoaded event handler
+      function showError(message) {
+        const toast = document.createElement('div');
+        toast.className = 'error-toast';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 5000);
+      }
+
+      // Add toggle password visibility
+      const toggleKeyVisibility = document.getElementById('toggle-key-visibility');
+      toggleKeyVisibility.addEventListener('click', () => {
+        const input = document.getElementById('api-key-input');
+        input.type = input.type === 'password' ? 'text' : 'password';
+      });
+
+      // Update fetchArticles error handling
+      try {
+        // ... existing fetch code ...
+      } catch (error) {
+        console.error("Error fetching articles:", error);
+        showError("Failed to load articles. Please try again.");
+      } finally {
+        loading = false;
+        loadingIndicator.style.display = "none";
+      }
+
+      // Add empty state handling in fetchArticles
+      if (!data.query || !data.query.pages || Object.keys(data.query.pages).length === 0) {
+        document.getElementById('empty-state').style.display = 'block';
+        observer.disconnect();
+        return;
+      } else {
+        document.getElementById('empty-state').style.display = 'none';
+      }
+
+      // Add first-time help tooltip
+      if (!localStorage.getItem('seenHelp')) {
+        starButton.setAttribute('data-tooltip', 'Click here to get AI-curated articles based on your interests');
+        localStorage.setItem('seenHelp', 'true');
+      }
     });
   </script>
 </body>
