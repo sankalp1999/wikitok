@@ -352,6 +352,9 @@ window.TopicGraph = class TopicGraph {
     const apiUrl = "https://en.wikipedia.org/w/api.php";
     
     try {
+        // Clear existing articles first
+        articlesGrid.innerHTML = '';
+        
         // Only fetch articles for the center topic (first topic)
         const topic = topics[0];
         const params = new URLSearchParams({
