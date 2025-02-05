@@ -352,105 +352,50 @@ window.TopicGraph = class TopicGraph {
     const apiUrl = "https://en.wikipedia.org/w/api.php";
     
     try {
-        articlesGrid.innerHTML = '<p>Loading articles...</p>'; // Loading indicator
-        
-        // Create a map to store articles by topic
-        const articlesByTopic = new Map();
-        
-        // Fetch articles for each topic
-        const fetchPromises = topics.map(async topic => {
-            const params = new URLSearchParams({
-                action: "query",
-                format: "json",
-                origin: "*",
-                generator: "search",
-                gsrsearch: topic, // Removed exact match to get more results
-                gsrlimit: "3", // Increased to 3 results per topic
-                prop: "pageimages|extracts",
-                exintro: "1",
-                explaintext: "1",
-                pithumbsize: "400"
-            });
-
-            try {
-                const response = await fetch(`${apiUrl}?${params.toString()}`);
-                const data = await response.json();
-                
-                if (data.query && data.query.pages) {
-                    const articles = Object.values(data.query.pages);
-                    console.log(`Found ${articles.length} articles for topic: ${topic}`, articles); // Debug log
-                    
-                    articlesByTopic.set(topic, articles.map(page => ({
-                        title: page.title,
-                        extract: page.extract || 'No summary available.',
-                        thumbnail: page.thumbnail?.source,
-                        pageid: page.pageid,
-                        topic: topic
-                    })));
-                } else {
-                    console.log(`No results found for topic: ${topic}`); // Debug log
-                }
-            } catch (error) {
-                console.error(`Error fetching articles for ${topic}:`, error);
-            }
+        // Only fetch articles for the center topic (first topic)
+        const topic = topics[0];
+        const params = new URLSearchParams({
+            action: "query",
+            format: "json",
+            origin: "*",
+            generator: "search",
+            gsrsearch: topic,
+            gsrlimit: "10", // Get more articles for infinite scrolling
+            prop: "pageimages|extracts",
+            exintro: "1",
+            explaintext: "1",
+            pithumbsize: "400"
         });
 
-        // Wait for all fetches to complete
-        await Promise.all(fetchPromises);
+        const response = await fetch(`${apiUrl}?${params.toString()}`);
+        const data = await response.json();
         
-        articlesGrid.innerHTML = ''; // Clear loading message
-        
-        // Helper function to shuffle array
-        const shuffleArray = (array) => {
-            for (let i = array.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [array[i], array[j]] = [array[j], array[i]];
-            }
-            return array;
-        };
-        
-        // Sort articles to show center topic first
-        const centerTopic = topics[0];
-        let centerArticles = [];
-        let otherArticles = [];
-        
-        // Separate center topic articles and other articles
-        if (articlesByTopic.has(centerTopic)) {
-            centerArticles = articlesByTopic.get(centerTopic);
+        let articles = [];
+        if (data.query && data.query.pages) {
+            articles = Object.values(data.query.pages).map(page => ({
+                title: page.title,
+                extract: page.extract || 'No summary available.',
+                thumbnail: page.thumbnail?.source,
+                pageid: page.pageid
+            }));
         }
-        
-        // Collect and shuffle other topics' articles
-        topics.slice(1).forEach(topic => {
-            if (articlesByTopic.has(topic)) {
-                otherArticles.push(...articlesByTopic.get(topic));
-            }
-        });
-        
-        // Shuffle both arrays
-        centerArticles = shuffleArray(centerArticles);
-        otherArticles = shuffleArray(otherArticles);
-        
-        // Combine arrays, keeping some center articles at the start
-        const numCenterArticlesToKeepAtTop = Math.min(2, centerArticles.length);
-        const topCenterArticles = centerArticles.slice(0, numCenterArticlesToKeepAtTop);
-        const remainingCenterArticles = centerArticles.slice(numCenterArticlesToKeepAtTop);
-        
-        // Combine and shuffle the remaining articles
-        const remainingArticles = shuffleArray([...remainingCenterArticles, ...otherArticles]);
-        
-        // Final array combines fixed center articles with shuffled remaining articles
-        const allArticles = [...topCenterArticles, ...remainingArticles];
+
+        // Mix in some random "related" articles
+        const randomArticles = Array(5).fill(null).map(() => ({
+            title: `Related Article ${Math.random().toString(36).substring(7)}`,
+            extract: 'This is a randomly generated related article to maintain infinite scrolling effect.',
+            thumbnail: null,
+            isRandom: true
+        }));
+
+        // Shuffle articles and random content together
+        const allArticles = [...articles, ...randomArticles].sort(() => Math.random() - 0.5);
 
         // Create article cards
         allArticles.forEach(article => {
             const articleElement = document.createElement('div');
             articleElement.className = 'article-preview';
             
-            if (article.topic === centerTopic) {
-                articleElement.classList.add('center-topic');
-            }
-            
-            // Improved article card layout with added cursor style and click handler
             articleElement.innerHTML = `
                 <div class="article-card" style="cursor: pointer;">
                     ${article.thumbnail ? 
@@ -461,42 +406,33 @@ window.TopicGraph = class TopicGraph {
                     }
                     <div class="article-content">
                         <h3>${article.title}</h3>
-                        <p>${article.extract ? article.extract.substring(0, 150) + '...' : 'No summary available.'}</p>
-                        <div class="article-footer">
-                            <a href="https://en.wikipedia.org/wiki/${encodeURIComponent(article.title)}" 
-                               target="_blank" 
-                               class="read-more-link"
-                               onclick="event.stopPropagation();">
-                               Read on Wikipedia →
-                            </a>
-                            ${article.topic === centerTopic ? 
-                                '<span class="topic-badge">Main Topic</span>' : 
-                                `<span class="topic-badge">Related to: ${article.topic}</span>`
-                            }
-                        </div>
+                        <p>${article.extract.substring(0, 150)}...</p>
+                        ${!article.isRandom ? 
+                            `<div class="article-footer">
+                                <a href="https://en.wikipedia.org/wiki/${encodeURIComponent(article.title)}" 
+                                   target="_blank" 
+                                   class="read-more-link"
+                                   onclick="event.stopPropagation();">
+                                   Read on Wikipedia →
+                                </a>
+                            </div>` : ''
+                        }
                     </div>
                 </div>
             `;
 
-            // Add click handler to the article card
-            articleElement.addEventListener('click', () => {
-                const customEvent = new CustomEvent('graphNodeClick', { 
-                    detail: { title: article.title } 
+            if (!article.isRandom) {
+                articleElement.addEventListener('click', () => {
+                    const customEvent = new CustomEvent('graphNodeClick', { 
+                        detail: { title: article.title } 
+                    });
+                    this.container.dispatchEvent(customEvent);
                 });
-                this.container.dispatchEvent(customEvent);
-            });
+            }
             
             articlesGrid.appendChild(articleElement);
         });
 
-        // If no articles were found, show a message
-        if (allArticles.length === 0) {
-            articlesGrid.innerHTML = `
-                <div class="no-results">
-                    <p>No articles found for the selected topics.</p>
-                    <p>Topics searched: ${topics.join(', ')}</p>
-                </div>`;
-        }
     } catch (error) {
         console.error("Error fetching articles:", error);
         articlesGrid.innerHTML = `
