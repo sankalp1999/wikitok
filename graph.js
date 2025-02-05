@@ -79,25 +79,17 @@ window.TopicGraph = class TopicGraph {
       .attr("height", height);
   }
 
-  // Utility to fetch 10 Wikipedia links from a given topic
+  // Simplified fetchArticleLinks to only use Wikipedia
   async fetchArticleLinks(topic) {
     try {
-      console.log("Attempting to fetch LLM suggestions for:", topic);
-      const llmLinks = await this.fetchLLMSuggestions(topic);
-      console.log("Successfully got LLM links:", llmLinks);
-      return llmLinks;
+      console.log("Attempting to fetch Wikipedia links for:", topic);
+      const wikiLinks = await this.fetchWikipediaLinks(topic);
+      console.log("Successfully got Wikipedia links:", wikiLinks);
+      return wikiLinks;
     } catch (error) {
-      console.log("Error with LLM suggestions, falling back to Wikipedia only:", error);
-      try {
-        console.log("Attempting to fetch Wikipedia links for:", topic);
-        const wikiLinks = await this.fetchWikipediaLinks(topic);
-        console.log("Successfully got Wikipedia links:", wikiLinks);
-        return wikiLinks;
-      } catch (wikiError) {
-        console.error("Failed to fetch Wikipedia links:", wikiError);
-        // Return mock data instead of throwing error
-        return this.getMockLinks(topic);
-      }
+      console.error("Failed to fetch Wikipedia links:", error);
+      // Return mock data instead of throwing error
+      return this.getMockLinks(topic);
     }
   }
 
@@ -113,41 +105,6 @@ window.TopicGraph = class TopicGraph {
       `${topic} - Related 7`,
       `${topic} - Related 8`,
     ];
-  }
-
-  async fetchLLMSuggestions(topic) {
-    const apiKey = localStorage.getItem("openRouterApiKey");
-    if (!apiKey) {
-      throw new Error("No API key found");
-    }
-
-    // Get recent topics from reading history
-    const readingHistory = JSON.parse(localStorage.getItem('readingHistory') || '[]');
-    const recentTopics = readingHistory.slice(0, 5).map(item => item.topic);
-    const historyContext = recentTopics.length 
-      ? `Based on your recent interests in: ${recentTopics.join(', ')}, and considering the current topic "${topic}", `
-      : `For the topic "${topic}", `;
-
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        "model": "google/gemini-2.0-flash-001",
-        "messages": [
-          {
-            "role": "user",
-            "content": `${historyContext}suggest 8 fascinating topics to explore. Consider knowledge progression and topic relationships. You can go deep/niche/bizarre/rabbithole way. Prioritize topics that connect to both the current topic and recent interests. Respond with only the topics separated by commas, no additional text.`
-          }
-        ]
-      })
-    });
-
-    if (!response.ok) throw new Error('LLM API request failed');
-    const data = await response.json();
-    return data.choices[0].message.content.split(',').map(t => t.trim());
   }
 
   async fetchWikipediaLinks(topic) {
@@ -395,48 +352,158 @@ window.TopicGraph = class TopicGraph {
     const apiUrl = "https://en.wikipedia.org/w/api.php";
     
     try {
-      articlesGrid.innerHTML = ''; // Clear existing articles
-      
-      // Fetch articles for each topic
-      for (const topic of topics) {
-        const params = new URLSearchParams({
-          action: "query",
-          format: "json",
-          origin: "*",
-          generator: "search",
-          gsrsearch: topic,
-          gsrlimit: "1", // Limit to 1 article per topic to avoid overwhelming
-          prop: "pageimages|extracts",
-          exintro: "1",
-          explaintext: "1",
-          pithumbsize: "400"
+        articlesGrid.innerHTML = '<p>Loading articles...</p>'; // Loading indicator
+        
+        // Create a map to store articles by topic
+        const articlesByTopic = new Map();
+        
+        // Fetch articles for each topic
+        const fetchPromises = topics.map(async topic => {
+            const params = new URLSearchParams({
+                action: "query",
+                format: "json",
+                origin: "*",
+                generator: "search",
+                gsrsearch: topic, // Removed exact match to get more results
+                gsrlimit: "3", // Increased to 3 results per topic
+                prop: "pageimages|extracts",
+                exintro: "1",
+                explaintext: "1",
+                pithumbsize: "400"
+            });
+
+            try {
+                const response = await fetch(`${apiUrl}?${params.toString()}`);
+                const data = await response.json();
+                
+                if (data.query && data.query.pages) {
+                    const articles = Object.values(data.query.pages);
+                    console.log(`Found ${articles.length} articles for topic: ${topic}`, articles); // Debug log
+                    
+                    articlesByTopic.set(topic, articles.map(page => ({
+                        title: page.title,
+                        extract: page.extract || 'No summary available.',
+                        thumbnail: page.thumbnail?.source,
+                        pageid: page.pageid,
+                        topic: topic
+                    })));
+                } else {
+                    console.log(`No results found for topic: ${topic}`); // Debug log
+                }
+            } catch (error) {
+                console.error(`Error fetching articles for ${topic}:`, error);
+            }
         });
 
-        const response = await fetch(`${apiUrl}?${params.toString()}`);
-        const data = await response.json();
+        // Wait for all fetches to complete
+        await Promise.all(fetchPromises);
         
-        if (data.query && data.query.pages) {
-          const pages = Object.values(data.query.pages)
-            .sort((a, b) => a.index - b.index);
-          
-          pages.forEach(page => {
-            const article = document.createElement('div');
-            article.className = 'article-preview';
-            
-            article.innerHTML = `
-              ${page.thumbnail ? `<img src="${page.thumbnail.source}" alt="${page.title}">` : ''}
-              <h3>${page.title}</h3>
-              <p>${page.extract || 'No summary available.'}</p>
-              <a href="https://en.wikipedia.org/?curid=${page.pageid}" target="_blank">Read more →</a>
-            `;
-            
-            articlesGrid.appendChild(article);
-          });
+        articlesGrid.innerHTML = ''; // Clear loading message
+        
+        // Helper function to shuffle array
+        const shuffleArray = (array) => {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        };
+        
+        // Sort articles to show center topic first
+        const centerTopic = topics[0];
+        let centerArticles = [];
+        let otherArticles = [];
+        
+        // Separate center topic articles and other articles
+        if (articlesByTopic.has(centerTopic)) {
+            centerArticles = articlesByTopic.get(centerTopic);
         }
-      }
+        
+        // Collect and shuffle other topics' articles
+        topics.slice(1).forEach(topic => {
+            if (articlesByTopic.has(topic)) {
+                otherArticles.push(...articlesByTopic.get(topic));
+            }
+        });
+        
+        // Shuffle both arrays
+        centerArticles = shuffleArray(centerArticles);
+        otherArticles = shuffleArray(otherArticles);
+        
+        // Combine arrays, keeping some center articles at the start
+        const numCenterArticlesToKeepAtTop = Math.min(2, centerArticles.length);
+        const topCenterArticles = centerArticles.slice(0, numCenterArticlesToKeepAtTop);
+        const remainingCenterArticles = centerArticles.slice(numCenterArticlesToKeepAtTop);
+        
+        // Combine and shuffle the remaining articles
+        const remainingArticles = shuffleArray([...remainingCenterArticles, ...otherArticles]);
+        
+        // Final array combines fixed center articles with shuffled remaining articles
+        const allArticles = [...topCenterArticles, ...remainingArticles];
+
+        // Create article cards
+        allArticles.forEach(article => {
+            const articleElement = document.createElement('div');
+            articleElement.className = 'article-preview';
+            
+            if (article.topic === centerTopic) {
+                articleElement.classList.add('center-topic');
+            }
+            
+            // Improved article card layout with added cursor style and click handler
+            articleElement.innerHTML = `
+                <div class="article-card" style="cursor: pointer;">
+                    ${article.thumbnail ? 
+                        `<div class="article-image">
+                            <img src="${article.thumbnail}" alt="${article.title}">
+                        </div>` : 
+                        '<div class="article-image-placeholder"></div>'
+                    }
+                    <div class="article-content">
+                        <h3>${article.title}</h3>
+                        <p>${article.extract ? article.extract.substring(0, 150) + '...' : 'No summary available.'}</p>
+                        <div class="article-footer">
+                            <a href="https://en.wikipedia.org/wiki/${encodeURIComponent(article.title)}" 
+                               target="_blank" 
+                               class="read-more-link"
+                               onclick="event.stopPropagation();">
+                               Read on Wikipedia →
+                            </a>
+                            ${article.topic === centerTopic ? 
+                                '<span class="topic-badge">Main Topic</span>' : 
+                                `<span class="topic-badge">Related to: ${article.topic}</span>`
+                            }
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Add click handler to the article card
+            articleElement.addEventListener('click', () => {
+                const customEvent = new CustomEvent('graphNodeClick', { 
+                    detail: { title: article.title } 
+                });
+                this.container.dispatchEvent(customEvent);
+            });
+            
+            articlesGrid.appendChild(articleElement);
+        });
+
+        // If no articles were found, show a message
+        if (allArticles.length === 0) {
+            articlesGrid.innerHTML = `
+                <div class="no-results">
+                    <p>No articles found for the selected topics.</p>
+                    <p>Topics searched: ${topics.join(', ')}</p>
+                </div>`;
+        }
     } catch (error) {
-      console.error("Error fetching articles:", error);
-      articlesGrid.innerHTML = '<p style="color: red; padding: 20px;">Error loading articles. Please try again.</p>';
+        console.error("Error fetching articles:", error);
+        articlesGrid.innerHTML = `
+            <div class="error-message">
+                <p>Error loading articles. Please try again.</p>
+                <p>Error details: ${error.message}</p>
+            </div>`;
     }
   }
 
