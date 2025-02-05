@@ -380,19 +380,8 @@ window.TopicGraph = class TopicGraph {
             }));
         }
 
-        // Mix in some random "related" articles
-        const randomArticles = Array(5).fill(null).map(() => ({
-            title: `Related Article ${Math.random().toString(36).substring(7)}`,
-            extract: 'This is a randomly generated related article to maintain infinite scrolling effect.',
-            thumbnail: null,
-            isRandom: true
-        }));
-
-        // Shuffle articles and random content together
-        const allArticles = [...articles, ...randomArticles].sort(() => Math.random() - 0.5);
-
         // Create article cards
-        allArticles.forEach(article => {
+        articles.forEach(article => {
             const articleElement = document.createElement('div');
             articleElement.className = 'article-preview';
             
@@ -407,28 +396,24 @@ window.TopicGraph = class TopicGraph {
                     <div class="article-content">
                         <h3>${article.title}</h3>
                         <p>${article.extract.substring(0, 150)}...</p>
-                        ${!article.isRandom ? 
-                            `<div class="article-footer">
-                                <a href="https://en.wikipedia.org/wiki/${encodeURIComponent(article.title)}" 
-                                   target="_blank" 
-                                   class="read-more-link"
-                                   onclick="event.stopPropagation();">
-                                   Read on Wikipedia →
-                                </a>
-                            </div>` : ''
-                        }
+                        <div class="article-footer">
+                            <a href="https://en.wikipedia.org/wiki/${encodeURIComponent(article.title)}" 
+                               target="_blank" 
+                               class="read-more-link"
+                               onclick="event.stopPropagation();">
+                               Read on Wikipedia →
+                            </a>
+                        </div>
                     </div>
                 </div>
             `;
 
-            if (!article.isRandom) {
-                articleElement.addEventListener('click', () => {
-                    const customEvent = new CustomEvent('graphNodeClick', { 
-                        detail: { title: article.title } 
-                    });
-                    this.container.dispatchEvent(customEvent);
+            articleElement.addEventListener('click', () => {
+                const customEvent = new CustomEvent('graphNodeClick', { 
+                    detail: { title: article.title } 
                 });
-            }
+                this.container.dispatchEvent(customEvent);
+            });
             
             articlesGrid.appendChild(articleElement);
         });
